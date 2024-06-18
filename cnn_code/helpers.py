@@ -45,17 +45,24 @@ def mlp_apply(model, test_loader, test_indexes):
         plt.axis('off')
     plt.show()
 
-def mlp_train(model, train_loader, test_loader, criterion, optimizer, num_epochs=20):
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.metrics import accuracy_score
+
+def mlp_train(model, train_loader, test_loader, criterion, optimizer, num_epochs):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     
-    train_losses, test_losses = [], []
+    train_losses, test_losses, train_accuracies, test_accuracies = [], [], [], []
 
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
+        all_preds, all_labels = [], []
+        
         for inputs, labels in train_loader:
-            inputs, labels = inputs.view(inputs.size(0), -1).to(device), labels.to(device)
+            inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, labels)
@@ -63,24 +70,37 @@ def mlp_train(model, train_loader, test_loader, criterion, optimizer, num_epochs
             optimizer.step()
             running_loss += loss.item()
 
-        train_losses.append(running_loss / len(train_loader))
+            _, preds = torch.max(outputs, 1)
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+        train_loss = running_loss / len(train_loader)
+        train_losses.append(train_loss)
+        train_accuracy = accuracy_score(all_labels, all_preds)
+        train_accuracies.append(train_accuracy)
 
         model.eval()
         test_loss = 0.0
-        correct = 0
-        total = 0
+        all_preds, all_labels = [], []
+
         with torch.no_grad():
             for inputs, labels in test_loader:
-                inputs, labels = inputs.view(inputs.size(0), -1).to(device), labels.to(device)
+                inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
                 test_loss += loss.item()
-                _, predicted = torch.max(outputs, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
 
-        test_losses.append(test_loss / len(test_loader))
-        accuracy = 100 * correct / total
-        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {train_losses[-1]:.4f}, Test Loss: {test_losses[-1]:.4f}, Accuracy: {accuracy:.2f}%')
+                _, preds = torch.max(outputs, 1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
 
-    return model, train_losses, test_losses
+        test_loss = test_loss / len(test_loader)
+        test_losses.append(test_loss)
+        test_accuracy = accuracy_score(all_labels, all_preds)
+        test_accuracies.append(test_accuracy)
+
+        print(f'Epoch [{epoch+1}/{num_epochs}], '
+              f'Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, '
+              f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
+
+    return model, train_losses, test_losses, train_accuracies, test_accuracies
