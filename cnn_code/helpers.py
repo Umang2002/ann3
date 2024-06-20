@@ -5,13 +5,11 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-
-
-
+from sklearn.metrics import accuracy_score
 
 
 def mlp_apply(model, test_loader, test_indexes):
-    # Get the device (GPU/CPU)
+    
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     
@@ -45,10 +43,7 @@ def mlp_apply(model, test_loader, test_indexes):
         plt.axis('off')
     plt.show()
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from sklearn.metrics import accuracy_score
+
 
 def mlp_train(model, train_loader, test_loader, criterion, optimizer, num_epochs):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
